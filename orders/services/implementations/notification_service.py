@@ -18,4 +18,4 @@ class NotificationService:
         """
         pass
 
-ns = NotificationService()
+notification_service = NotificationService()

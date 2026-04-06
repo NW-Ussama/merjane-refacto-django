@@ -9,8 +9,8 @@ from orders.entities.order import Order
 
 
 class TestMyView(TestCase):
-    @patch('orders.my_views.ps')
-    def test_process_order_should_return(self, mock_ns):
+    @patch('orders.my_views.product_service')
+    def test_process_order_should_return(self, mock_product_service):
         products = [
             Product(available=15, lead_time=30, type="NORMAL",    name="USB Cable"),
             Product(available=10, lead_time=0,  type="NORMAL",    name="USB Dongle"),
@@ -25,15 +25,15 @@ class TestMyView(TestCase):
                     season_start_date=date.today() + timedelta(days=180),
                     season_end_date=date.today() + timedelta(days=240)),
         ]
-        for p in products:
-            p.save()
+        for product in products:
+            product.save()
 
-        o = Order.objects.create()
-        o.products.set(products)
+        order = Order.objects.create()
+        order.products.set(products)
 
-        url = reverse('process_order', args=[o.id])
+        url = reverse('process_order', args=[order.id])
         response = self.client.post(url, content_type="application/json")
 
         self.assertEqual(response.status_code, 200)
-        result_order = Order.objects.get(id=o.id)
-        self.assertEqual(result_order.id, o.id)
+        result_order = Order.objects.get(id=order.id)
+        self.assertEqual(result_order.id, order.id)

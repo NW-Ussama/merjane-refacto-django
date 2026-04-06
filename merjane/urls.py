@@ -16,11 +16,15 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
+from django.http import JsonResponse, HttpResponse
 
 from orders.my_views import process_order
 
 
 urlpatterns = [
+    path('', lambda request: HttpResponse("API is running"), name='home'),
     path('admin/', admin.site.urls),
     path('orders/<int:order_id>/processOrder', process_order, name='process_order'),
+    # Ajout d'une route pour vérifier la santé de l'application 
+    path('health/', lambda request: JsonResponse({'status': 'ok'}), name='health'),
 ]

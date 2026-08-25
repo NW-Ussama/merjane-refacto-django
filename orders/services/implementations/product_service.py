@@ -1,31 +1,32 @@
-from datetime import date, timedelta
+"""Product service: routes a product to the handler for its type.
+
+This is a thin dispatcher. It holds no per-type logic itself — it only maps a
+product ``type`` to the handler that knows the rules. Adding a new product type
+means adding a handler and one entry in the registry below.
+"""
+
+from ...entities.product import Product
 from ...repositories.product_repository import pr
+from ..handlers import (
+    ExpirableProductHandler,
+    NormalProductHandler,
+    SeasonalProductHandler,
+)
 from .notification_service import ns
 
+
 class ProductService:
-    def notify_delay(self, lead_time, p):
-        p.lead_time = lead_time
-        pr.save(p)
-        ns.send_delay_notification(lead_time, p.name)
+    def __init__(self, product_repository=pr, notification_service=ns):
+        self._handlers = {
+            Product.NORMAL: NormalProductHandler(product_repository, notification_service),
+            Product.SEASONAL: SeasonalProductHandler(product_repository, notification_service),
+            Product.EXPIRABLE: ExpirableProductHandler(product_repository, notification_service),
+        }
 
-    def handle_seasonal_product(self, p):
-        if date.today() + timedelta(days=p.lead_time) > p.season_end_date:
-            ns.send_out_of_stock_notification(p.name)
-            p.available = 0
-            pr.save(p)
-        elif p.season_start_date > date.today():
-            ns.send_out_of_stock_notification(p.name)
-            pr.save(p)
-        else:
-            self.notify_delay(p.lead_time, p)
+    def process(self, product):
+        handler = self._handlers.get(product.type)
+        if handler is not None:
+            handler.handle(product)
 
-    def handle_expired_product(self, p):
-        if p.available > 0 and p.expiry_date > date.today():
-            p.available -= 1
-            pr.save(p)
-        else:
-            p.available = 0
-            pr.save(p)
-            ns.send_expiry_notification(p.name)
 
 ps = ProductService()

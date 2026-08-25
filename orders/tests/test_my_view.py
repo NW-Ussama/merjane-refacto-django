@@ -10,13 +10,15 @@ used inside the product service, so we patch it there and assert on the calls.
 """
 
 from datetime import date, timedelta
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from django.test import TestCase
 from django.urls import reverse
 
 from orders.entities.order import Order
 from orders.entities.product import Product
+from orders.services.implementations.order_service import OrderService
+from orders.services.implementations.product_service import ProductService
 
 TODAY = date.today()
 
@@ -27,10 +29,14 @@ def days(n):
 
 class ProcessOrderViewTest(TestCase):
     def setUp(self):
-        # Patch the notification singleton used by the product service and keep
-        # the mock handy for assertions in every test.
-        patcher = patch('orders.services.implementations.product_service.ns')
-        self.ns = patcher.start()
+        # NotificationService is the external boundary, so we mock it and inject
+        # it through the real service graph used by the view. This lets us
+        # assert on the notifications produced while exercising the real rules.
+        self.ns = MagicMock()
+        service = OrderService(
+            product_service=ProductService(notification_service=self.ns))
+        patcher = patch('orders.my_views.order_service', service)
+        patcher.start()
         self.addCleanup(patcher.stop)
 
     def process_single(self, **product_kwargs):
